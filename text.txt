@@ -1,0 +1,7 @@
+Api_Key:46c2a9e395a8dd714d2032715c3caf78fd26b1e3044ec37581a5c54120957a87
+
+
+curl.exe -X POST https://mixjix-hosting.online/promptpay-api/api/generate_qr.php `
+  -H "X-API-KEY: 46c2a9e395a8dd714d2032715c3caf78fd26b1e3044ec37581a5c54120957a87" `
+  -H "Content-Type: application/x-www-form-urlencoded" `
+  -d "amount=100"
