@@ -4,6 +4,7 @@ composer.lock
 
 # Configuration
 .env
+config/config.php
 
 # IDEs
 .vscode/

@@ -1,3 +1,4 @@
+<?php require_once 'config/config.php'; ?>
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -106,7 +107,7 @@
 </div>
 
 <script>
-    const API_KEY = '46c2a9e395a8dd714d2032715c3caf78fd26b1e3044ec37581a5c54120957a87';
+    const API_KEY = '<?php echo FRONTEND_API_KEY; ?>';
 
     function copyText(id) {
         const text = document.getElementById(id).textContent;
