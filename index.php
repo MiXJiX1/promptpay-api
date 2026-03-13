@@ -216,37 +216,54 @@
         const file = input.files[0];
         const fileName = document.getElementById('fileName');
         const resultDiv = document.getElementById('verifyResult');
-        const slipKeyContainer = document.getElementById('slipKeyContainer');
-        const hashValue = document.getElementById('hash-value');
 
         if (!file) return;
 
+        // Client-side validation
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('กรุณาอัปโหลดไฟล์รูปภาพ (JPG, PNG) เท่านั้น');
+            input.value = ''; // Reset input
+            return;
+        }
+
         fileName.textContent = file.name;
         resultDiv.className = 'verify-result';
-        resultDiv.textContent = 'กำลังตรวจสอบ...';
+        resultDiv.innerHTML = '<span class="spinner"></span> [0/2] เตรียมความพร้อม...';
         resultDiv.style.display = 'block';
-        slipKeyContainer.style.display = 'none';
+
+        const fetchWithTimeout = async (url, options, timeout = 15000) => {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        };
 
         try {
             // 1. Upload File
+            resultDiv.innerHTML = '<span class="spinner"></span> [1/2] กำลังส่งสลิปไปยังเซิร์ฟเวอร์...';
             const uploadData = new FormData();
             uploadData.append('slip', file);
 
-            const uploadRes = await fetch('api/slip/upload.php', {
+            const uploadRes = await fetchWithTimeout('api/slip/upload.php', {
                 method: 'POST',
                 body: uploadData
-            });
-            const uploadJson = await uploadRes.json();
+            }, 10000); // 10s for upload
 
-            if (!uploadJson.success) {
-                throw new Error(uploadJson.error || 'Upload failed');
-            }
+            const uploadJson = await uploadRes.json();
+            if (!uploadJson.success) throw new Error(uploadJson.error || 'Upload failed');
 
             // 2. Verify File
+            resultDiv.innerHTML = '<span class="spinner"></span> [2/2] กำลังแกะข้อมูล QR และตรวจสอบ...<br><span style="font-size: 0.7rem; color: #a0aec0;">(ใช้เวลาประมาณ 5-10 วินาที)</span>';
             const verifyData = new FormData();
             verifyData.append('file', uploadJson.file);
             
-            // ล็อกยอดเงินและเบอร์ที่ใช้เช็คตาม QR ที่สร้างล่าสุด
             const amountToCheck = lastGeneratedAmount || document.getElementById('amount')?.value.trim() || '0';
             const phoneToCheck = lastGeneratedPhone || document.getElementById('phone')?.value.trim() || '';
             
@@ -277,14 +294,23 @@
                     <div>• ยอดเงินที่พบ: <strong>${Number(slipData.amount).toLocaleString('th-TH', {minimumFractionDigits: 2})} บาท</strong></div>
                     <div>• วันที่โอน: ${slipData.date}</div>
                     <div>• อ้างอิง: ${slipData.transRef || '-'}</div>
+                    <div style="color: #a0aec0; margin-top: 4px; border-top: 1px dotted #e2e8f0; padding-top: 4px;">⚡ ประมวลผลใน: ${slipData.debug?.execution_time || 'N/A'}</div>
                 </div>
-                <div style="font-size: 0.75rem; margin-top: 10px; color: #a0aec0; text-align: center;">หน้าเว็บจะเริ่มใหม่ใน 5 วินาที...</div>
+                <div style="font-size: 0.75rem; margin-top: 10px; color: #a0aec0; text-align: center;">หน้าเว็บจะเริ่มใหม่ใน <span id="countdown">5</span> วินาที...</div>
             `;
 
-            // Refresh page after 5 seconds
-            setTimeout(() => {
-                window.location.reload();
-            }, 5000);
+            // Countdown timer
+            let seconds = 5;
+            const countdownInterval = setInterval(() => {
+                seconds--;
+                const countdownEl = document.getElementById('countdown');
+                if (countdownEl) countdownEl.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(countdownInterval);
+                    window.location.reload();
+                }
+            }, 1000);
 
 
         } catch (error) {

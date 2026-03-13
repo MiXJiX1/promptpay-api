@@ -20,7 +20,7 @@ class PromptPay {
         } elseif (preg_match('/^\d{15}$/', $target)) {
             $type = '03';
         } else {
-            die('INVALID PROMPTPAY ID: ' . $target . " (Length: ".strlen($target).")");
+            throw new Exception('รูปแบบเบอร์พร้อมเพย์ไม่ถูกต้อง: ' . $target);
         }
 
         $merchant =

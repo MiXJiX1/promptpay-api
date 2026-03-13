@@ -18,6 +18,7 @@ class SlipService
     public static function verify(string $imagePath, array $order): array
     {
         self::init();
+        $startTime = microtime(true);
 
         if (!file_exists($imagePath)) {
             throw new Exception('Slip file not found');
@@ -32,6 +33,12 @@ class SlipService
 
         // 3️⃣ ตรวจข้อมูลกับ order
         SlipValidator::validate($data, $order);
+
+        $endTime = microtime(true);
+        $data['debug'] = [
+            'execution_time' => round($endTime - $startTime, 4) . 's',
+            'raw_data_snippet' => substr($raw, 0, 50)
+        ];
 
         return $data;
     }
@@ -114,14 +121,18 @@ class SlipService
             // DEVELOPMENT BYPASS: สำหรับสลิปธนาคาร (Mini QR)
             // ยอดเงินในสลิปพวกนี้มักจะว่าง (null) ให้ใช้ยอดเงินที่สร้าง QR แทนเพื่อการทดสอบ
             if ($amount === null || $amount == 0) {
-                $amount = $order['amount'] ?? 0;
+                if (defined('SLIP_VERIFY_DEVELOPMENT') && SLIP_VERIFY_DEVELOPMENT) {
+                    $amount = $order['amount'] ?? 0;
+                }
             } else {
                 $amount = (float)$amount;
             }
 
             // เช็คเบอร์ผู้รับ ถ้าที่อ่านได้ไม่เป็นรูปแบบเบอร์โทร/เลขบัตร ให้ใช้เบอร์ที่สร้าง QR แทน
             if ($receiver === null || !preg_match('/^(0\d{9}|\d{13}|\d{15})$/', $receiver)) {
-                $receiver = $order['promptpay'] ?? ($order['phone'] ?? '');
+                if (defined('SLIP_VERIFY_DEVELOPMENT') && SLIP_VERIFY_DEVELOPMENT) {
+                    $receiver = $order['promptpay'] ?? ($order['phone'] ?? '');
+                }
             }
         }
 

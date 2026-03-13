@@ -5,6 +5,8 @@ use Zxing\QrReader;
 class SlipDecoder {
 
     public static function decode(string $imagePath, array $expectedOrder = []): string {
+        ini_set('memory_limit', '512M'); 
+        set_time_limit(15); 
         try {
             if (file_exists($imagePath)) {
                 $qrcode = new QrReader($imagePath);
@@ -15,7 +17,7 @@ class SlipDecoder {
                 }
             }
         } catch (Throwable $e) {
-            // Log error if needed: error_log($e->getMessage());
+            // Decoding failed or timed out
         }
         
         // Final Fallback: Mock Data (Always useful for testing when image is not a QR)

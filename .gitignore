@@ -13,3 +13,7 @@ config/config.php
 # OS files
 .DS_Store
 Thumbs.db
+
+# Uploads
+api/slip/uploads/*
+!api/slip/uploads/.gitkeep

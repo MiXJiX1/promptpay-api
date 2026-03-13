@@ -5,7 +5,16 @@ if (!isset($_FILES['slip'])) {
     Response::json(['error' => 'No slip uploaded'], 400);
 }
 
-$ext = pathinfo($_FILES['slip']['name'], PATHINFO_EXTENSION);
+$allowedExtensions = ['jpg', 'jpeg', 'png'];
+$allowedMimes = ['image/jpeg', 'image/png'];
+
+$ext = strtolower(pathinfo($_FILES['slip']['name'], PATHINFO_EXTENSION));
+$mime = mime_content_type($_FILES['slip']['tmp_name']);
+
+if (!in_array($ext, $allowedExtensions) || !in_array($mime, $allowedMimes)) {
+    Response::json(['error' => 'รูปแบบไฟล์ไม่ถูกต้อง อนุญาตเฉพาะ JPG และ PNG เท่านั้น'], 400);
+}
+
 $filename = uniqid('slip_') . '.' . $ext;
 $uploadDir = __DIR__ . '/uploads/';
 
@@ -14,7 +23,9 @@ if (!is_dir($uploadDir)) {
 }
 
 $path = $uploadDir . $filename;
-move_uploaded_file($_FILES['slip']['tmp_name'], $path);
+if (!move_uploaded_file($_FILES['slip']['tmp_name'], $path)) {
+    Response::json(['error' => 'ไม่สามารถบันทึกไฟล์ได้ กรุณาลองใหม่'], 500);
+}
 
 Response::json([
     'success' => true,

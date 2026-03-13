@@ -1,9 +1,10 @@
-<?php
+require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../core/SlipDecoder.php';
 require_once __DIR__ . '/../../core/SlipValidator.php';
 require_once __DIR__ . '/../../core/Response.php';
 
-$file = __DIR__ . '/uploads/' . $_POST['file'];
+$fileName = basename($_POST['file'] ?? '');
+$file = __DIR__ . '/uploads/' . $fileName;
 $orderAmount = floatval($_POST['amount'] ?? 0);
 $promptpayId = $_POST['phone'] ?? '';
 
