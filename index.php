@@ -55,14 +55,6 @@
             ยอดโอน <span id="display-amount" style="color: #667eea;"></span> บาท
         </div>
         
-        <div class="key-container">
-            <div class="key-label">PromptPay Payload (Reusable Key)</div>
-            <div class="key-value-wrapper">
-                <div id="payload-value" class="key-value"></div>
-                <button class="copy-btn" onclick="copyText('payload-value')" title="Copy Payload">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-            </div>
         </div>
 
         <button class="btn-secondary" onclick="downloadQR()" style="margin-top: 1rem; width: 100%; justify-content: center;">
@@ -94,20 +86,14 @@
         </div>
 
         <div id="verifyResult" class="verify-result"></div>
-        <div id="slipKeyContainer" class="key-container" style="display: none;">
-            <div id="slipKeyLabel" class="key-label">Slip Key (Transaction Ref)</div>
-            <div class="key-value-wrapper">
-                <div id="hash-value" class="key-value"></div>
-                <button class="copy-btn" onclick="copyText('hash-value')" title="Copy Key">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-            </div>
         </div>
     </div>
 </div>
 
 <script>
     const API_KEY = '<?php echo FRONTEND_API_KEY; ?>';
+    let lastGeneratedAmount = null;
+    let lastGeneratedPhone = null;
 
     function copyText(id) {
         const text = document.getElementById(id).textContent;
@@ -130,7 +116,6 @@
         const errorDiv = document.getElementById('error-message');
         const qrImage = document.getElementById('qr-image');
         const displayAmount = document.getElementById('display-amount');
-        const payloadValue = document.getElementById('payload-value');
 
         // Reset state
         errorDiv.style.display = 'none';
@@ -182,7 +167,8 @@
                     minimumFractionDigits: 2, 
                     maximumFractionDigits: 2 
                 });
-                payloadValue.textContent = data.payload;
+                lastGeneratedAmount = amount;
+                lastGeneratedPhone = phone;
                 resultDiv.style.display = 'block';
             } else {
                 throw new Error('ไม่พบข้อมูล QR Code จากระบบ');
@@ -259,8 +245,13 @@
             // 2. Verify File
             const verifyData = new FormData();
             verifyData.append('file', uploadJson.file);
-            verifyData.append('phone', document.getElementById('phone')?.value.trim() || '');
-            verifyData.append('amount', document.getElementById('amount')?.value.trim() || '0');
+            
+            // ล็อกยอดเงินและเบอร์ที่ใช้เช็คตาม QR ที่สร้างล่าสุด
+            const amountToCheck = lastGeneratedAmount || document.getElementById('amount')?.value.trim() || '0';
+            const phoneToCheck = lastGeneratedPhone || document.getElementById('phone')?.value.trim() || '';
+            
+            verifyData.append('phone', phoneToCheck);
+            verifyData.append('amount', amountToCheck);
 
             const verifyRes = await fetch('api/slip/verify.php', {
                 method: 'POST',
@@ -273,23 +264,28 @@
             }
 
             resultDiv.className = 'verify-result success';
+            const slipData = verifyJson.data;
             resultDiv.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                ตรวจสอบแล้ว: ยอดเงินถูกต้อง (Paid)
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #2f855a; font-weight: 600;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    ตรวจสอบสำเร็จ: ยอดเงินถูกต้อง
+                </div>
+                <div style="font-size: 0.85rem; padding-left: 28px; line-height: 1.5; color: #4a5568;">
+                    <div>• ยอดเงินที่พบ: <strong>${Number(slipData.amount).toLocaleString('th-TH', {minimumFractionDigits: 2})} บาท</strong></div>
+                    <div>• วันที่โอน: ${slipData.date}</div>
+                    <div>• อ้างอิง: ${slipData.transRef || '-'}</div>
+                </div>
+                <div style="font-size: 0.75rem; margin-top: 10px; color: #a0aec0; text-align: center;">หน้าเว็บจะเริ่มใหม่ใน 5 วินาที...</div>
             `;
 
-            if (verifyJson.data) {
-                const data = verifyJson.data;
-                const slipKey = data.transRef || data.verification_hash;
-                const label = data.transRef ? 'Slip Key (Transaction Ref)' : 'Verification Hash (Internal)';
-                
-                document.getElementById('slipKeyLabel').textContent = label;
-                hashValue.textContent = slipKey;
-                slipKeyContainer.style.display = 'block';
-            }
+            // Refresh page after 5 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+
 
         } catch (error) {
             console.error(error);
